@@ -65,6 +65,7 @@
             <setting>OCA\Deck\Activity\SettingChanges</setting>
             <setting>OCA\Deck\Activity\SettingDescription</setting>
             <setting>OCA\Deck\Activity\SettingComment</setting>
+            <setting>OCA\Deck\Activity\UserRelatedSetting</setting>
         </settings>
         <filters>
             <filter>OCA\Deck\Activity\Filter</filter>

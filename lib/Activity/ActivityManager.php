@@ -451,10 +451,63 @@ class ActivityManager {
 		$boardId = $mapper->findBoardId($event->getObjectId());
 		/** @var IUser $user */
 		foreach ($this->permissionService->findUsers($boardId) as $user) {
+			// Check if this is a user-related activity
+			$isUserRelated = $this->isUserRelatedActivity($event, $user->getUID());
+			
+			// If user has enabled only user-related activities and this isn't one, skip
+			if (!$this->shouldSendToUser($event, $user->getUID(), $isUserRelated)) {
+				continue;
+			}
+
 			$event->setAffectedUser($user->getUID());
-			/** @noinspection DisconnectedForeachInstructionInspection */
 			$this->manager->publish($event);
 		}
+	}
+
+	/**
+	 * Check if an activity is related to a specific user
+	 */
+	private function isUserRelatedActivity(IEvent $event, string $userId): bool {
+		$subject = $event->getSubject();
+		$subjectParams = $event->getSubjectParameters();
+
+		switch ($subject) {
+			case self::SUBJECT_CARD_USER_ASSIGN:
+			case self::SUBJECT_CARD_USER_UNASSIGN:
+				return isset($subjectParams['assigneduser']) && $subjectParams['assigneduser'] === $userId;
+			
+			case 'card-assigned':
+			case 'card-overdue':
+				// These are already user-specific notifications
+				return true;
+
+			case 'card-comment-mentioned':
+				return isset($subjectParams['author']) && $subjectParams['author'] === $userId;
+
+			default:
+				return false;
+		}
+	}
+
+	/**
+	 * Check if we should send this activity to the user based on their preferences
+	 */
+	private function shouldSendToUser(IEvent $event, string $userId, bool $isUserRelated): bool {
+		try {
+			$userSettings = $this->manager->getSettings($userId);
+			foreach ($userSettings as $setting) {
+				if ($setting->getIdentifier() === 'user_related') {
+					// If user has enabled only user-related activities and this isn't one, skip
+					if ($setting->isDefaultEnabledMail() && !$isUserRelated) {
+						return false;
+					}
+					break;
+				}
+			}
+		} catch (\Exception $e) {
+			// If we can't get settings, default to sending
+		}
+		return true;
 	}
 
 	/**

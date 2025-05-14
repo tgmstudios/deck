@@ -129,6 +129,12 @@ class AssignmentService {
 
 		if ($type === Assignment::TYPE_USER && $userId !== $this->currentUser) {
 			$this->notificationHelper->sendCardAssigned($card, $userId);
+			$this->activityManager->triggerEvent(
+				ActivityManager::DECK_OBJECT_CARD,
+				$card,
+				ActivityManager::SUBJECT_CARD_USER_ASSIGN,
+				['assigneduser' => $userId]
+			);
 		}
 
 		$assignment = new Assignment();
